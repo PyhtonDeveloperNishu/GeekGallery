@@ -4,24 +4,14 @@ import Gallery from './components/Gallery';
 import { fetchImagesFromAPI } from './utils/api';
 import './App.css';
 
-// App component
 function App() {
   const [state, dispatch] = useReducer(imageReducer, initialState);
   const [query, setQuery] = useState("");
 
   const { images, page, loading, error } = state;
 
-  useEffect(()=>{
-    fetchImages();
-  },[]);
-
-  
-
-
-  // Function to fetch images
   const fetchImages = async () => {
     dispatch({ type: "FETCH_START" });
-
     try {
       const results = await fetchImagesFromAPI(query, page);
       dispatch({ type: "FETCH_SUCCESS", payload: results });
@@ -30,24 +20,38 @@ function App() {
     }
   };
 
-  // Handles form submission
   const handleSearch = (e) => {
     e.preventDefault();
-    dispatch({ type: "RESET" }); // clear existing images
+    dispatch({ type: "RESET" }); 
     fetchImages();
   };
 
-  // Load more images (pagination)
-  const loadMore = () => {
-    dispatch({ type: "INCREMENT_PAGE" });
+  // Infinite scroll handler
+  useEffect(() => {
+    const handleScroll = () => {
+      const scrollTop = window.scrollY;
+      const windowHeight = window.innerHeight;
+      const documentHeight = document.documentElement.scrollHeight;
+
+      // When scrolled within 100px of bottom AND not loading
+      if (scrollTop + windowHeight >= documentHeight - 100 && !loading) {
+        dispatch({ type: "INCREMENT_PAGE" });
+      }
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [loading]);  // re-attach when loading changes
+
+  // Fetch images when page changes
+  useEffect(() => {
     fetchImages();
-  };
+  }, [page]);
 
   return (
     <div>
       <h1 style={{ textAlign: 'center' }}>GeekGallery 📸</h1>
 
-      {/* Search form */}
       <form onSubmit={handleSearch} style={{ textAlign: "center", marginBottom: '1rem' }}>
         <input
           type="text"
@@ -58,19 +62,10 @@ function App() {
         <button type='submit'>Search</button>
       </form>
 
-      {/* Gallery display */}
       <Gallery images={images} />
 
-      {/* Loading and error states */}
       {loading && <h2 style={{ textAlign: "center" }}>Loading...</h2>}
       {error && <h2 style={{ textAlign: "center", color: "red" }}>{error}</h2>}
-
-      {/* Load more button */}
-      {images.length > 0 && !loading && (
-        <div style={{ textAlign: 'center', margin: '1rem' }}>
-          <button onClick={loadMore}>Load More</button>
-        </div>
-      )}
     </div>
   );
 }
